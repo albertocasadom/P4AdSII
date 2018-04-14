@@ -1,7 +1,7 @@
 #!/bin/bash
 
 clear;
-g++ -o controlclientes controlclientes.cpp && ./controlclientes
+g++ -pthread -o controlclientes controlclientes.cpp && ./controlclientes
 
 
  
