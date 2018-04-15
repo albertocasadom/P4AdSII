@@ -6,6 +6,8 @@
 using namespace std;
 
 pthread_mutex_t mutex_datoscl = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t factura_cv = PTHREAD_COND_INITIALIZER;
+pthread_cond_t factura_cv_exit = PTHREAD_COND_INITIALIZER;
 
  struct info_cliente{
  unsigned dni;
@@ -43,10 +45,12 @@ void imprimir_datos_cl(){
 		cout << endl << " No hay clientes registrados" << endl << endl;
 	}else{
 		cout << "Listado de clientes: " << endl;
+		pthread_mutex_lock(&mutex_datoscl);
 		for(int i = 0; i<user;i++){
 			cout << i+1 << ": " << datos_cl[i].dni << " | " << datos_cl[i].nombre << " | " << datos_cl[i].tarifa 
 			<< " | " << datos_cl[i].alta << " | " << datos_cl[i].descuento << endl;
 		}
+		pthread_mutex_unlock(&mutex_datoscl);
 	}
 }
 
@@ -122,6 +126,7 @@ unsigned cambiar_tarifa(unsigned dni, char tarifa){
 		if(datos_cl[i].dni == dni){
 			datos_cl[i].tarifa = tarifa;
 			ok = 1;
+			pthread_cond_signal(&factura_cv);
 		}
 	}
 	pthread_mutex_unlock(&mutex_datoscl);
@@ -132,29 +137,62 @@ void * actualizar_desc(void * var){
 
 	long secs = (long) var;
 	while(1){
-
+		int change = 0;
+		sleep(secs);
 		pthread_mutex_lock (&mutex_datoscl);
 		for(int i = 0; i< user; i++){
 			if((datos_cl[i].tarifa == 'A') && (datos_cl[i].alta <= 2008)){
 				if(datos_cl[i].descuento != 30){
 					datos_cl[i].descuento = 30;
-					pthread_join()
+					change = 1;
 				}
 			}else if((datos_cl[i].tarifa == 'A') && (datos_cl[i].alta > 2008 && datos_cl[i].alta <=2012)){
 					if(datos_cl[i].descuento != 40){
 						datos_cl[i].descuento = 40;
+						change = 1;
 					}
 			}else if((datos_cl[i].tarifa == 'A') && (datos_cl[i].alta > 2012)){
-					if(datos_cl[i].descuento != 25){
+					if(datos_cl[i].descuento != 25){						
 						datos_cl[i].descuento = 25;
+						change = 1;
 					}	
 			}else{
 				datos_cl[i].descuento = 0;
+				change = 1;		
 			}
 		}
+		if(change == 1){
+			pthread_cond_signal(&factura_cv);
+		}
 		pthread_mutex_unlock(&mutex_datoscl);
-		sleep(secs);
 	}
+	
+}
+
+void * print_tarifa(void * var){
+
+	double facturacion = 0;
+	pthread_mutex_lock(&mutex_datoscl);
+	for(int i = 0; i< user; i++){
+		pthread_cond_wait(&factura_cv, &mutex_datoscl);
+		if(datos_cl[i].tarifa == 'A'){
+			if(datos_cl[i].descuento != 0){
+				facturacion += (800 * (1 -(datos_cl[i].descuento * 0.01)));
+			}
+		}else if(datos_cl[i].tarifa == 'B'){
+			if(datos_cl[i].descuento != 0){
+				facturacion += (600 * (1 -(datos_cl[i].descuento * 0.01)));
+			}
+		}else if(datos_cl[i].tarifa == 'C'){
+			if(datos_cl[i].descuento != 0){
+				facturacion += (300 * (1 -(datos_cl[i].descuento * 0.01)));
+			}
+		}else{
+			cout << "La tarifa no es correcta, por favor revise los datos del usuario: " << datos_cl[i].dni << endl;
+		}
+	}
+	pthread_mutex_unlock(&mutex_datoscl);
+	cout << "Nueva facturación estimada: " << facturacion << endl;
 	
 }
 
@@ -201,19 +239,25 @@ int main(){
 					}
 				break;
 				case 5:
+					ret = pthread_create(&h_factura, NULL, print_tarifa, NULL);
+					if(ret){
+						cout << "Error en la creación de la hebra: " << ret << endl;
+						exit(-1);
+					}
 					cout << "Introduzca la periodicidad con la que desee actualizar los descuentos: ";
 					cin >> secs;
 					ret = pthread_create(&h_desc, NULL,actualizar_desc, (void *)secs);
 					if(ret){
-						cout << "Error en la creación de la hebra: " << ret;
+						cout << "Error en la creación de la hebra: " << ret << endl;
 						exit(-1);
 					}
 				break;
 				case 6:
 					ret = pthread_cancel(h_desc);
+					ret = pthread_cancel(h_factura);
 					exit(0);
 				break;
 		}
 	}
-	pthread_exit(NULL);
+pthread_exit(NULL);
 }
