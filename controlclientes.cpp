@@ -65,6 +65,12 @@ int alta_usr(){
 
 		cout << "DNI del usuario: ";
 		cin >> new_user.dni;
+		for(int j = 0; j<user; j++){
+			if(datos_cl[j].dni == new_user.dni){
+				cout << "El usuario ya está dado de alta" << endl << endl;
+				return -1;
+			}
+		}
 		cout << "Nombre del usuario: ";
 		cin >> new_user.nombre;
 		cout << "Tarifa inicial: ";
@@ -76,13 +82,6 @@ int alta_usr(){
 		cout << endl;
 
 		pthread_mutex_lock(&mutex_datoscl);
-
-			for(int j = 0; j<user; j++){
-				if(datos_cl[j].dni == new_user.dni){
-					cout << "El usuario ya está dado de alta" << endl << endl;
-					return -1;
-				}
-			}
 
 		datos_cl[user] = new_user;
 		user++;
