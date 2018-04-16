@@ -22,6 +22,7 @@ pthread_cond_t factura_cv = PTHREAD_COND_INITIALIZER;
  static int user = 0;
  int change = 0;
  double facturacion;
+ int cambio =1;
 
 int menu(){
 
@@ -146,26 +147,33 @@ void * actualizar_desc(void * var){
 				if(datos_cl[i].descuento != 30){
 					datos_cl[i].descuento = 30;
 					change = 1;
+				}else{
+						cambio =1;
 				}
 			}else if((datos_cl[i].tarifa == 'A') && (datos_cl[i].alta > 2008 && datos_cl[i].alta <=2012)){
 					if(datos_cl[i].descuento != 40){
 						datos_cl[i].descuento = 40;
 						change = 1;
+					}else{
+						cambio =1;
 					}
 			}else if((datos_cl[i].tarifa == 'A') && (datos_cl[i].alta > 2012)){
 					if(datos_cl[i].descuento != 25){						
 						datos_cl[i].descuento = 25;
 						change = 1;
+					}else{
+						cambio =1;
 					}	
 			}else{
 				if(datos_cl[i].descuento != 0){
 				datos_cl[i].descuento = 0;
 				change = 1;
-				}	
+				}else{
+						cambio =1;
+				}
 			}
 		}
-		pthread_mutex_unlock(&mutex_datoscl);
-		pthread_mutex_lock (&mutex_datoscl);
+
 		if(change == 1){
 			pthread_cond_signal(&factura_cv);
 		}
@@ -194,6 +202,9 @@ void * print_tarifa(void * var){
 				}	
 			}		
 		change = 0;
+		
+		cout << "Nueva facturación estimada: " << facturacion << "euros" << endl;
+		cambio = 1;
 	}
 	pthread_mutex_unlock(&mutex_datoscl);
 }
@@ -201,6 +212,8 @@ void * print_tarifa(void * var){
 void terminar(pthread_t h_desc, pthread_t h_factura){
 	pthread_cancel(h_desc);
 	pthread_cancel(h_factura);
+	pthread_exit(NULL);
+
 	exit(0);
 }	
 
@@ -216,6 +229,11 @@ int main(){
 	int ret = 0;
 
 		while (1){
+
+			while(cambio == 0){
+
+			}
+			
 
 			int option = menu();
 
@@ -245,6 +263,7 @@ int main(){
 					cin >> dni;
 					cout << "Introduzca la nueva tarifa: ";
 					cin >> tarifa;
+					cambio = 0;
 					if(tarifa == 'A' || tarifa == 'B' || tarifa == 'C'){
 						ok = cambiar_tarifa(dni, tarifa);
 						if(ok == 0){
@@ -259,6 +278,7 @@ int main(){
 				case 5:
 					cout << "Introduzca la periodicidad con la que desee actualizar los descuentos: ";
 					cin >> secs;
+					cambio = 0;
 					ret = pthread_create(&h_desc, NULL,actualizar_desc, (void *)secs);
 					if(ret){
 						cout << "Error en la creación de la hebra: " << ret << endl;
