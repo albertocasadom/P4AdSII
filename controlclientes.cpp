@@ -9,11 +9,11 @@ pthread_mutex_t mutex_datoscl = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t factura_cv = PTHREAD_COND_INITIALIZER;
 
  struct info_cliente{
- unsigned dni;
- string nombre;
- char tarifa;
- unsigned alta;
- unsigned descuento;
+	 unsigned dni;
+	 string nombre;
+	 char tarifa;
+	 unsigned alta;
+	 unsigned descuento;
  };
 
  typedef struct info_cliente info_cliente_t;
@@ -21,6 +21,7 @@ pthread_cond_t factura_cv = PTHREAD_COND_INITIALIZER;
  info_cliente_t datos_cl [MAX_CLIENTES];
  static int user = 0;
  int change = 0;
+ double facturacion;
 
 int menu(){
 
@@ -65,12 +66,15 @@ int alta_usr(){
 
 		cout << "DNI del usuario: ";
 		cin >> new_user.dni;
+		pthread_mutex_lock(&mutex_datoscl);
 		for(int j = 0; j<user; j++){
 			if(datos_cl[j].dni == new_user.dni){
 				cout << "El usuario ya está dado de alta" << endl << endl;
+				pthread_mutex_unlock(&mutex_datoscl);
 				return -1;
 			}
 		}
+		pthread_mutex_unlock(&mutex_datoscl);
 		cout << "Nombre del usuario: ";
 		cin >> new_user.nombre;
 		cout << "Tarifa inicial: ";
@@ -154,10 +158,14 @@ void * actualizar_desc(void * var){
 						change = 1;
 					}	
 			}else{
+				if(datos_cl[i].descuento != 0){
 				datos_cl[i].descuento = 0;
-				change = 1;		
+				change = 1;
+				}	
 			}
 		}
+		pthread_mutex_unlock(&mutex_datoscl);
+		pthread_mutex_lock (&mutex_datoscl);
 		if(change == 1){
 			pthread_cond_signal(&factura_cv);
 		}
@@ -167,34 +175,27 @@ void * actualizar_desc(void * var){
 }
 
 void * print_tarifa(void * var){
-
-	double facturacion = 0;
+	
 	pthread_mutex_lock(&mutex_datoscl);
 	while(change == 0){
-	pthread_cond_wait(&factura_cv, &mutex_datoscl);
-		if(change == 1){
-			for(int i = 0; i< user; i++){
-				if(datos_cl[i].tarifa == 'A'){
-					if(datos_cl[i].descuento != 0){
-						facturacion += (800 * (1 -(datos_cl[i].descuento * 0.01)));
+		pthread_cond_wait(&factura_cv, &mutex_datoscl);
+			if(change == 1){
+				facturacion = 0;
+				for(int i = 0; i< user; i++){
+					if(datos_cl[i].tarifa == 'A'){
+							facturacion = facturacion + (800 * (1 -(datos_cl[i].descuento * 0.01)));
+					}else if(datos_cl[i].tarifa == 'B'){
+							facturacion = facturacion + (600 * (1 -(datos_cl[i].descuento * 0.01)));
+					}else if(datos_cl[i].tarifa == 'C'){
+							facturacion = facturacion + (300 * (1 -(datos_cl[i].descuento * 0.01)));
+					}else{
+						cout << "La tarifa no es correcta, por favor revise los datos del usuario: " << datos_cl[i].dni << endl;
 					}
-				}else if(datos_cl[i].tarifa == 'B'){
-					if(datos_cl[i].descuento != 0){
-						facturacion += (600 * (1 -(datos_cl[i].descuento * 0.01)));
-					}
-				}else if(datos_cl[i].tarifa == 'C'){
-					if(datos_cl[i].descuento != 0){
-						facturacion += (300 * (1 -(datos_cl[i].descuento * 0.01)));
-					}
-				}else{
-					cout << "La tarifa no es correcta, por favor revise los datos del usuario: " << datos_cl[i].dni << endl;
-				}
-			}
-		}
-	cout << "Nueva facturación estimada: " << facturacion << endl;
-	pthread_mutex_unlock(&mutex_datoscl);
-	change = 0;
+				}	
+			}		
+		change = 0;
 	}
+	pthread_mutex_unlock(&mutex_datoscl);
 }
 
 void terminar(pthread_t h_desc, pthread_t h_factura){
@@ -221,12 +222,14 @@ int main(){
 			switch(option){
 				case 1:
 					imprimir_datos_cl();
+					
 				break;
 				case 2:
 					alta = alta_usr();
 					if(alta != 0){
 						cout << "No se puede dar de alta al usuario\n";
 					}
+			
 				break;
 				case 3:
 					cout << "Introduzca el DNI del cliente que desee dar de baja: ";
@@ -235,16 +238,23 @@ int main(){
 					if(ok == 0){
 						cout << endl << "No existe ningún usuario con el DNI introducido." << endl;
 					}
+				
 				break;
 				case 4:
 					cout << "Introduzca el DNI del cliente al que se le desea aplicar la nueva tarifa: ";
 					cin >> dni;
 					cout << "Introduzca la nueva tarifa: ";
 					cin >> tarifa;
-					ok = cambiar_tarifa(dni, tarifa);
-					if(ok == 0){
-						cout << "No existe ningún usuario con el DNI introducido." << endl;
+					if(tarifa == 'A' || tarifa == 'B' || tarifa == 'C'){
+						ok = cambiar_tarifa(dni, tarifa);
+						if(ok == 0){
+							cout << "No existe ningún usuario con el DNI introducido." << endl;
+						}
+					
+					}else{
+						cout << "Introduzca una tarifa valida: A, B o C" << endl;
 					}
+					
 				break;
 				case 5:
 					cout << "Introduzca la periodicidad con la que desee actualizar los descuentos: ";
