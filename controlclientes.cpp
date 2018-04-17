@@ -58,9 +58,6 @@ void imprimir_datos_cl(){
 int alta_usr(){
 
 	if (user < MAX_CLIENTES){ 
-		unsigned dni, alta, descuento;
-		string nombre;
-		char tarifa;
 
 		info_cliente_t new_user;
 
