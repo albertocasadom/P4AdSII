@@ -229,6 +229,9 @@ int main(){
 					alta = alta_usr();
 					if(alta != 0){
 						cout << "No se puede dar de alta al usuario\n";
+					}else{
+						cout << "Solicitud de alta al servidor central en curso..." << endl;
+						cout << "Resultado: Usuario dado de alta." << endl;
 					}
 			
 				break;
@@ -255,6 +258,8 @@ int main(){
 					}else{
 						cout << "Introduzca una tarifa valida: A, B o C" << endl;
 					}
+					cout << endl <<"Solicitud de cambio de tarifa al servidor central en curso..." << endl;
+					cout << "Resultado: Cambio de tarifa efectuado." << endl;
 					
 				break;
 				case 5:
@@ -271,11 +276,16 @@ int main(){
 							cout << "Error en la creación de la hebra: " << ret << endl;
 							exit(-1);
 						}
+					cout << endl <<"Solicitud de activacion de actualizacion de tarifas al servidor central en curso..." << endl;
+					cout << "Resultado: Actualizacion automatica de tarifas activado en el servidor." << endl;
+
 					}else{
 						cout << endl << "La función ya está activada" << endl;
 					}
 				break;
 				case 6:
+					cout << endl <<"Avisando a cliente de la terminacion!" << endl;
+					cout << "Servidor terminado!" << endl <<endl;
 					terminar();
 				break;
 		}
